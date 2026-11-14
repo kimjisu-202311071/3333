@@ -31,8 +31,7 @@ $('run').onclick=async()=>{if(!basket.length){$('sim-status').textContent='시�
 function renderResult(){$('results').hidden=false;$('cards').replaceChildren(...[['수요 증가액',result.demand],['생산유발액',result.production],['수입유발액',result.imports],['부가가치유발액',result.valueAdded]].map(([title,v])=>{const d=text('div',title);d.className='card';d.append(text('strong',fmt(v)),text('span','백만원'));return d;}));const max=Math.max(...result.rows.map(r=>r.production),1);$('bars').replaceChildren(...result.rows.slice(0,15).map(r=>{const d=text('div',r.name+' · '+fmt(r.production)+'백만원');d.className='bar';const t=document.createElement('div');t.className='track';const f=document.createElement('div');f.className='fill';f.style.width=Math.max(0,r.production/max*100)+'%';t.append(f);d.append(t);return d;}));$('result-rows').replaceChildren(...result.rows.map(r=>{const tr=document.createElement('tr');[r.code,r.name,fmt(r.production),fmt(r.imports),fmt(r.valueAdded)].forEach(v=>tr.append(text('td',v)));return tr;}));}
 function csvCell(v){let s=String(v);if(/^[=+@-]/.test(s)&&typeof v!=='number')s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
 $('download').onclick=()=>{if(!result)return;const rows=[['산업코드','산업명','생산유발액_백만원','수입유발액_백만원','부가가치유발액_백만원'],...result.rows.map(r=>[r.code,r.name,r.production,r.imports,r.valueAdded])];const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='io-2023-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-
-async function const LEVELS={
+const LEVELS={
  basic:{label:'기본부문',file:'./data/io-2023.xlsx'},
  small:{label:'소분류',file:'./data/io-2023-small.xlsx'},
  medium:{label:'중분류',file:'./data/io-2023-medium.xlsx'},
@@ -55,41 +54,4 @@ $('load-basic').onclick=async()=>{
   $('status').textContent='준비 실패: '+e.message;
   b.textContent='다시 불러오기';
  }finally{b.disabled=false;}
-};
-    <option value="medium">중분류</option>
-    <option value="large">대분류</option>
-  </select>
-</label>
-$('load-basic').onclick=async()=>{
- const button=$('load-basic');
- button.disabled=true;
- button.textContent='불러오는 중…';
- try {
-  await loadDefaultWorkbook();
-  const ready=!$('sheet').disabled;
-  button.textContent=ready?'기본부문 불러오기 완료':'기본부문 다시 불러오기';
-  button.disabled=ready;
- }finally{
-  if($('sheet').disabled){button.disabled=false;button.textContent='기본부문 다시 불러오기';}
- }
-};
-const LEVELS={
-  basic:{label:'기본부문',file:'./data/io-2023.xlsx'},
-  small:{label:'소분류',file:'./data/io-2023-small.xlsx'},
-  medium:{label:'중분류',file:'./data/io-2023-medium.xlsx'},
-  large:{label:'대분류',file:'./data/io-2023-large.xlsx'}
-};
-async function loadLevel(key){
-  const lv=LEVELS[key];
-  $('status').textContent=lv.label+' Excel 내려받는 중…';
-  const r=await fetch(lv.file);
-  if(!r.ok)throw Error(lv.label+' 다운로드 실패 (HTTP '+r.status+')');
-  await load(await r.arrayBuffer());
-}
-$('load-basic').onclick=async()=>{
-  const b=$('load-basic'),key=$('level').value;
-  b.disabled=true;b.textContent='불러오는 중…';
-  try{await loadLevel(key);b.textContent=LEVELS[key].label+' 불러오기 완료';}
-  catch(e){$('status').textContent='준비 실패: '+e.message;b.textContent='다시 불러오기';}
-  finally{b.disabled=false;}
 };
