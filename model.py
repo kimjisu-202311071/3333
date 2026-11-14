@@ -27,8 +27,7 @@ def initialize(raw):
         return a
     L = matrix('생산유발계수'); M = matrix('수입유발계수'); V = matrix('부가가치유발계수')
     ad = matrix('국산투입계수(Ad)'); am = matrix('수입투입계수(Am)')
-    rows=book['총투입계수(A)']; ci={str(c):i for i,c in enumerate(rows[4])}
-    vr=next(r for r in rows if str(r[0])=='9690')
+    v = 1 - (ad + am).sum(axis=0)
     v=np.array([vr[ci[c]] for c in codes],dtype=float)
     residuals = {'생산':float(np.max(np.abs((np.eye(len(codes))-ad)@L-np.eye(len(codes))))),
                  '수입':float(np.max(np.abs(am@L-M))),
