@@ -6,11 +6,11 @@ function call(type,payload){return new Promise((resolve,reject)=>{const id=++nex
 function startWorker(){worker=new Worker('./worker.js');worker.onmessage=({data:d})=>{if(d.type==='status'){$('status').textContent=d.text;return;}const p=requests.get(d.id);if(!p)return;requests.delete(d.id);d.ok?p.resolve(d.result):p.reject(Error(d.error));};worker.onerror=e=>{for(const p of requests.values())p.reject(Error(e.message||'Worker 실행 오류'));requests.clear();};}
 function options(el,list){el.replaceChildren(...list.map(x=>{const o=document.createElement('option');o.value=x.code;o.textContent=x.code+' '+x.name;return o;}));}
 function invalidate(){result=null;$('results').hidden=true;}
-async function load(buffer){
+async function load(buffer,lv){
  invalidate();basket=[];renderBasket();
  for(const id of ['sheet','row','sector','add','run','row-search','col-search','sector-search','amount'])$(id).disabled=true;
  if(worker)worker.terminate();for(const p of requests.values())p.reject(Error('데이터 다시 로드'));requests.clear();startWorker();
- try{const info=await call('init',buffer);sectors=info.sectors;options($('sector'),sectors);$('sector-search').value='';$('row-search').value='';$('col-search').value='';$('sheet').replaceChildren(...info.sheets.map(s=>{const o=text('option',s);o.value=s;return o;}));
+ try{const info=await call('init',{buffer,level:lv});sectors=info.sectors;options($('sector'),sectors);$('sector-search').value='';$('row-search').value='';$('col-search').value='';$('sheet').replaceChildren(...info.sheets.map(s=>{const o=text('option',s);o.value=s;return o;}));
  $('validation').textContent=JSON.stringify(info.residuals,null,2)+'\n최대 절대 잔차: 허용값 1e-8 미만';
  for(const id of ['sheet','row','sector','add','run','row-search','col-search','sector-search','amount'])$(id).disabled=false;
  await explore();$('status').textContent='준비 완료 · '+sectors.length+'개 부문 · '+info.sheets.length+'개 시트 · 계수 검증 통과';
@@ -32,20 +32,30 @@ function renderResult(){$('results').hidden=false;$('cards').replaceChildren(...
 function csvCell(v){let s=String(v);if(/^[=+@-]/.test(s)&&typeof v!=='number')s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
 $('download').onclick=()=>{if(!result)return;const rows=[['산업코드','산업명','생산유발액_백만원','수입유발액_백만원','부가가치유발액_백만원'],...result.rows.map(r=>[r.code,r.name,r.production,r.imports,r.valueAdded])];const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='io-2023-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 
-async function loadDefaultWorkbook(){
- try {
-  $('status').textContent='기본 Excel 내려받는 중…';
-  const response=await fetch('./data/io-2023.xlsx');
-  if(!response.ok)throw Error('기본 Excel 다운로드 실패 (HTTP '+response.status+')');
-  await load(await response.arrayBuffer());
- }catch(error){
-  $('status').textContent='준비 실패: '+error.message+' — 연결 상태를 확인하고 새로고침하세요.';
- }
+async function const LEVELS={
+ basic:{label:'기본부문',file:'./data/io-2023.xlsx'},
+ small:{label:'소분류',file:'./data/io-2023-small.xlsx'},
+ medium:{label:'중분류',file:'./data/io-2023-medium.xlsx'},
+ large:{label:'대분류',file:'./data/io-2023-large.xlsx'}
+};
+async function loadLevel(key){
+ const lv=LEVELS[key];
+ $('status').textContent=lv.label+' Excel 내려받는 중…';
+ const r=await fetch(lv.file);
+ if(!r.ok)throw Error(lv.label+' 다운로드 실패 (HTTP '+r.status+')');
+ await load(await r.arrayBuffer(),key);
 }
-<label>분류 기준
-  <select id="level">
-    <option value="basic">기본부문 (380)</option>
-    <option value="small">소분류</option>
+$('load-basic').onclick=async()=>{
+ const b=$('load-basic'),key=$('level').value;
+ b.disabled=true;b.textContent='불러오는 중…';
+ try{
+  await loadLevel(key);
+  b.textContent=LEVELS[key].label+' 불러오기 완료';
+ }catch(e){
+  $('status').textContent='준비 실패: '+e.message;
+  b.textContent='다시 불러오기';
+ }finally{b.disabled=false;}
+};
     <option value="medium">중분류</option>
     <option value="large">대분류</option>
   </select>
