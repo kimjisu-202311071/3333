@@ -42,6 +42,14 @@ async function loadDefaultWorkbook(){
   $('status').textContent='준비 실패: '+error.message+' — 연결 상태를 확인하고 새로고침하세요.';
  }
 }
+<label>분류 기준
+  <select id="level">
+    <option value="basic">기본부문 (380)</option>
+    <option value="small">소분류</option>
+    <option value="medium">중분류</option>
+    <option value="large">대분류</option>
+  </select>
+</label>
 $('load-basic').onclick=async()=>{
  const button=$('load-basic');
  button.disabled=true;
@@ -54,4 +62,24 @@ $('load-basic').onclick=async()=>{
  }finally{
   if($('sheet').disabled){button.disabled=false;button.textContent='기본부문 다시 불러오기';}
  }
+};
+const LEVELS={
+  basic:{label:'기본부문',file:'./data/io-2023.xlsx'},
+  small:{label:'소분류',file:'./data/io-2023-small.xlsx'},
+  medium:{label:'중분류',file:'./data/io-2023-medium.xlsx'},
+  large:{label:'대분류',file:'./data/io-2023-large.xlsx'}
+};
+async function loadLevel(key){
+  const lv=LEVELS[key];
+  $('status').textContent=lv.label+' Excel 내려받는 중…';
+  const r=await fetch(lv.file);
+  if(!r.ok)throw Error(lv.label+' 다운로드 실패 (HTTP '+r.status+')');
+  await load(await r.arrayBuffer());
+}
+$('load-basic').onclick=async()=>{
+  const b=$('load-basic'),key=$('level').value;
+  b.disabled=true;b.textContent='불러오는 중…';
+  try{await loadLevel(key);b.textContent=LEVELS[key].label+' 불러오기 완료';}
+  catch(e){$('status').textContent='준비 실패: '+e.message;b.textContent='다시 불러오기';}
+  finally{b.disabled=false;}
 };
