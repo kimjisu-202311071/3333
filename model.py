@@ -31,7 +31,8 @@ def initialize(raw, lv='basic'):
         return a
     L = matrix('생산유발계수'); M = matrix('수입유발계수'); V = matrix('부가가치유발계수')
     ad = matrix('국산투입계수(Ad)'); am = matrix('수입투입계수(Am)')
-    v = 1 - (ad + am).sum(axis=0)
+    cs = (ad + am).sum(axis=0)
+v = np.where(cs > 0, 1 - cs, 0.0)
     n = len(codes)
     residuals = {'생산': float(np.max(np.abs((np.eye(n) - ad) @ L - np.eye(n)))),
                  '수입': float(np.max(np.abs(am @ L - M))),
